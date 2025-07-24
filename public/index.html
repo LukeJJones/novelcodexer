@@ -5,45 +5,219 @@
   <title>Novelcrafter Codex Merger</title>
   <style>
     body {
-      font-family: sans-serif;
-      max-width: 600px;
-      margin: 50px auto;
-      text-align: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f7f6;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
     }
-    input[type="file"] {
-      margin: 20px 0;
+    .container {
+      background-color: #fff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-size: 2.2em;
+    }
+    p {
+      color: #666;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    .drop-area {
+      border: 3px dashed #a0d8b3;
+      border-radius: 10px;
+      padding: 40px 20px;
+      margin-bottom: 30px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    .drop-area.highlight {
+      background-color: #e6f7ee;
+      border-color: #5cb85c;
+    }
+    .drop-area p {
+      margin: 0;
+      font-size: 1.1em;
+      color: #5cb85c;
+    }
+    .file-input {
+      display: none; /* Hide the default file input */
+    }
+    .file-info {
+      margin-top: 15px;
+      font-size: 0.95em;
+      color: #444;
     }
     button {
-      padding: 10px 20px;
-      font-size: 16px;
+      background-color: #5cb85c;
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      box-shadow: 0 4px 10px rgba(92, 184, 92, 0.3);
+    }
+    button:hover:not(:disabled) {
+      background-color: #4cae4c;
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+      box-shadow: none;
     }
     #status {
-      margin-top: 20px;
+      margin-top: 25px;
+      font-size: 1em;
       color: #555;
+      min-height: 20px; /* To prevent layout shift */
+    }
+    .status-success {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .status-error {
+      color: #dc3545;
+      font-weight: bold;
+    }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #5cb85c;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <h1>Codex Merger</h1>
-  <p>Upload a Novelcrafter codex export (.zip)</p>
+  
+  <div class="container">
+    <h1>Novelcodexer</h1>
+    <p>Upload your Novelcrafter codex export (.zip) file below to merge and format your entries.</p>
 
-  <form id="uploadForm">
-    <input type="file" name="codexZip" accept=".zip" required>
-    <br>
-    <button type="submit">Upload & Merge</button>
-  </form>
+    <form id="uploadForm">
+      <div class="drop-area" id="dropArea">
+        <p>Drag & Drop your .zip file here, or click to select</p>
+        <input type="file" name="codexZip" accept=".zip" required class="file-input" id="fileInput">
+      </div>
+      <div class="file-info" id="fileInfo"></div>
+      <button type="submit" id="submitButton">Upload & Merge</button>
+    </form>
 
-  <div id="status"></div>
+    <div id="status"></div>
+
+    <p style="font-size: 0.9em; color: #777; margin-top: 20px;">
+      ✨ Don't worry, your precious novel secrets are safe! Codex exports are processed on the fly and vanish like a plot twist – no saving here. Your story, your privacy! ✨
+    </p>
+
+    <div style="margin-top: 30px;">
+      <a href="https://coff.ee/lukejjones" target="_blank" style="text-decoration: none; color: #5cb85c; font-weight: bold;">
+        ☕ Buy Me A Coffee
+      </a>
+    </div>
+  </div>
 
   <script>
     const form = document.getElementById("uploadForm");
-    const status = document.getElementById("status");
+    const statusDiv = document.getElementById("status");
+    const fileInput = document.getElementById("fileInput");
+    const dropArea = document.getElementById("dropArea");
+    const fileInfoDiv = document.getElementById("fileInfo");
+    const submitButton = document.getElementById("submitButton");
+
+    let selectedFile = null;
+
+    // Handle file selection via input
+    fileInput.addEventListener("change", () => {
+      selectedFile = fileInput.files[0];
+      updateFileInfo();
+    });
+
+    // Handle drag and drop events
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    dropArea.addEventListener('drop', handleDrop, false);
+    dropArea.addEventListener('click', () => fileInput.click()); // Click to open file dialog
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function highlight() {
+      dropArea.classList.add('highlight');
+    }
+
+    function unhighlight() {
+      dropArea.classList.remove('highlight');
+    }
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) {
+        selectedFile = files[0];
+        fileInput.files = files; // Assign files to the input for form submission
+        updateFileInfo();
+      }
+    }
+
+    function updateFileInfo() {
+      if (selectedFile) {
+        fileInfoDiv.textContent = `Selected file: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+        submitButton.disabled = false;
+      } else {
+        fileInfoDiv.textContent = '';
+        submitButton.disabled = true;
+      }
+    }
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      status.textContent = "Uploading and processing...";
 
-      const formData = new FormData(form);
+      if (!selectedFile) {
+        statusDiv.className = 'status-error';
+        statusDiv.textContent = "Please select a .zip file to upload.";
+        return;
+      }
+
+      statusDiv.className = '';
+      statusDiv.innerHTML = '<span class="spinner"></span> Uploading and processing...';
+      submitButton.disabled = true; // Disable button during processing
+
+      const formData = new FormData();
+      formData.append("codexZip", selectedFile);
 
       try {
         const response = await fetch("/upload", {
@@ -51,20 +225,36 @@
           body: formData
         });
 
-        if (!response.ok) throw new Error("Server error");
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Server error");
+        }
 
         const blob = await response.blob();
         const downloadUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = downloadUrl;
         a.download = "codex.zip";
+        document.body.appendChild(a); // Append to body to make it clickable in all browsers
         a.click();
+        document.body.removeChild(a); // Clean up
         URL.revokeObjectURL(downloadUrl);
-        status.textContent = "Download ready!";
+
+        statusDiv.className = 'status-success';
+        statusDiv.textContent = "Download ready! Your merged codex.zip has been downloaded.";
+        selectedFile = null; // Clear selected file after successful download
+        fileInput.value = ''; // Clear file input
+        updateFileInfo(); // Update UI
       } catch (err) {
-        status.textContent = "Error: " + err.message;
+        statusDiv.className = 'status-error';
+        statusDiv.textContent = "Error: " + err.message;
+      } finally {
+        submitButton.disabled = false; // Re-enable button
       }
     });
+
+    // Initial state
+    updateFileInfo();
   </script>
 </body>
 </html>
