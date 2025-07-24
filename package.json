@@ -1,0 +1,22 @@
+{
+  "name": "novelcodexer",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "archiver": "^7.0.1",
+    "express": "^5.1.0",
+    "fs-extra": "^11.3.0",
+    "multer": "^1.4.5-lts.2",
+    "unzipper": "^0.12.3",
+    "js-yaml": "^4.1.0"
+  }
+}

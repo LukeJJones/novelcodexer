@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Novelcrafter Codex Merger</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      text-align: center;
+    }
+    input[type="file"] {
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    #status {
+      margin-top: 20px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Codex Merger</h1>
+  <p>Upload a Novelcrafter codex export (.zip)</p>
+
+  <form id="uploadForm">
+    <input type="file" name="codexZip" accept=".zip" required>
+    <br>
+    <button type="submit">Upload & Merge</button>
+  </form>
+
+  <div id="status"></div>
+
+  <script>
+    const form = document.getElementById("uploadForm");
+    const status = document.getElementById("status");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      status.textContent = "Uploading and processing...";
+
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch("/upload", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) throw new Error("Server error");
+
+        const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "codex.zip";
+        a.click();
+        URL.revokeObjectURL(downloadUrl);
+        status.textContent = "Download ready!";
+      } catch (err) {
+        status.textContent = "Error: " + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
