@@ -8,7 +8,20 @@ const os = require("os");
 const yaml = require("js-yaml");
 
 const app = express();
-const upload = multer({ dest: "uploads/" });
+
+function adjustMarkdownHeadings(text, levelOffset) {
+  const stringText = String(text || ""); // Ensure text is a string, handle null/undefined
+  return stringText.replace(/^(#+)\s*(.*)$/gm, (match, hashes, content) => {
+    const currentLevel = hashes.length;
+    const newLevel = Math.min(6, currentLevel + levelOffset); // Max H6
+    return "#".repeat(newLevel) + " " + content;
+  });
+}
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: MAX_FILE_SIZE },
+});
 const PORT = 3000;
 
 const CATEGORIES = ["lore", "objects", "other", "locations", "characters"];
@@ -17,8 +30,21 @@ const CATEGORIES = ["lore", "objects", "other", "locations", "characters"];
 app.use(express.static("public"));
 
 app.post("/upload", upload.single("codexZip"), async (req, res) => {
-  if (!req.file || !req.file.originalname.endsWith(".zip")) {
+  if (!req.file) {
+    return res.status(400).send("No file uploaded.");
+  }
+
+  if (!req.file.originalname.endsWith(".zip")) {
+    await fs.remove(req.file.path); // Clean up invalid file
     return res.status(400).send("Please upload a valid .zip file.");
+  }
+
+  // Check file magic number for ZIP (PK\x03\x04)
+  const fileBuffer = await fs.readFile(req.file.path);
+  const magicNumber = fileBuffer.toString("hex", 0, 4);
+  if (magicNumber !== "504b0304") {
+    await fs.remove(req.file.path); // Clean up invalid file
+    return res.status(400).send("Invalid ZIP file format. Please upload a valid Novelcrafter codex export.");
   }
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "codex-"));
@@ -37,7 +63,9 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
       if (!(await fs.pathExists(categoryPath))) continue;
 
       const folders = await fs.readdir(categoryPath);
-      let combined = "";
+      let combined = `# ${category.charAt(0).toUpperCase() + category.slice(1)}
+
+`;
 
       for (const folder of folders) {
         const entryPath = path.join(categoryPath, folder, "entry.md");
@@ -59,6 +87,7 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
             "doNotTrack",
             "noAutoInclude",
             "color",
+            "type", // Exclude type from individual entry formatting
           ];
           for (const field of excludedFields) {
             delete frontMatter[field];
@@ -67,9 +96,8 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
           let formattedContent = ``;
 
           const entryName = frontMatter.name || "Untitled";
-          const entryType = frontMatter.type || "Unknown";
 
-          formattedContent += `# ${entryName}\n\n`;
+          formattedContent += `## ${entryName}\n\n`;
 
           for (const key in frontMatter) {
             if (key === "name") continue;
@@ -84,19 +112,23 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
               displayKey = "Attributes";
             }
 
-            formattedContent += `## ${displayKey.charAt(0).toUpperCase() + displayKey.slice(1)}\n`;
+            formattedContent += `### ${displayKey.charAt(0).toUpperCase() + displayKey.slice(1)}\n`;
 
             if (typeof value === "object" && value !== null) {
               for (const subKey in value) {
-                formattedContent += `### ${subKey.charAt(0).toUpperCase() + subKey.slice(1)}\n`;
-                formattedContent += `${value[subKey]}\n\n`;
+                formattedContent += `#### ${subKey.charAt(0).toUpperCase() + subKey.slice(1)}\n`;
+                formattedContent += `${adjustMarkdownHeadings(value[subKey], 4)}
+
+`;
               }
             } else {
-              formattedContent += `${value}\n\n`;
+              formattedContent += `${adjustMarkdownHeadings(value, 3)}
+
+`;
             }
           }
 
-          formattedContent += `## Description\n${markdownBody}`;
+          formattedContent += `### Description\n${adjustMarkdownHeadings(markdownBody, 3)}`;
 
           combined += `\n\n${formattedContent}\n\n`;
         }
@@ -131,6 +163,16 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
     await fs.remove(tempDir);
     await fs.remove(req.file.path);
   }
+});
+
+// Multer error handling middleware
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).send(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)} MB.`);
+    }
+  }
+  next(err);
 });
 
 app.listen(PORT, () => {
