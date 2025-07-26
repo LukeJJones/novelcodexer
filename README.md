@@ -1,6 +1,6 @@
-# NovelCodexer
+# Novelcodexer
 
-A project for novel writing and organization.
+Novelcodexer is a simple utility that helps you merge your exported Novelcrafter codex into clean, chatbot-ready files.
 
 ## Setup
 
