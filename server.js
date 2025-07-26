@@ -44,7 +44,11 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
   const magicNumber = fileBuffer.toString("hex", 0, 4);
   if (magicNumber !== "504b0304") {
     await fs.remove(req.file.path); // Clean up invalid file
-    return res.status(400).send("Invalid ZIP file format. Please upload a valid Novelcrafter codex export.");
+    return res
+      .status(400)
+      .send(
+        "Invalid ZIP file format. Please upload a valid Novelcrafter codex export."
+      );
   }
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "codex-"));
@@ -97,7 +101,7 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
 
           const entryName = frontMatter.name || "Untitled";
 
-          formattedContent += `## ${entryName}\n\n`;
+          formattedContent += `## Name: ${entryName}\n\n`;
 
           for (const key in frontMatter) {
             if (key === "name") continue;
@@ -106,17 +110,25 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
             const value = frontMatter[key];
 
             if (key === "fields") {
-              if (typeof value === "object" && value !== null && Object.keys(value).length === 0) {
+              if (
+                typeof value === "object" &&
+                value !== null &&
+                Object.keys(value).length === 0
+              ) {
                 continue; // Omit "Attributes" header if no child attributes
               }
               displayKey = "Attributes";
             }
 
-            formattedContent += `### ${displayKey.charAt(0).toUpperCase() + displayKey.slice(1)}\n`;
+            formattedContent += `### ${
+              displayKey.charAt(0).toUpperCase() + displayKey.slice(1)
+            }\n`;
 
             if (typeof value === "object" && value !== null) {
               for (const subKey in value) {
-                formattedContent += `#### ${subKey.charAt(0).toUpperCase() + subKey.slice(1)}\n`;
+                formattedContent += `#### ${
+                  subKey.charAt(0).toUpperCase() + subKey.slice(1)
+                }\n`;
                 formattedContent += `${adjustMarkdownHeadings(value[subKey], 4)}
 
 `;
@@ -128,7 +140,10 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
             }
           }
 
-          formattedContent += `### Description\n${adjustMarkdownHeadings(markdownBody, 3)}`;
+          formattedContent += `### Description\n${adjustMarkdownHeadings(
+            markdownBody,
+            3
+          )}`;
 
           combined += `\n\n${formattedContent}\n\n`;
         }
@@ -168,8 +183,12 @@ app.post("/upload", upload.single("codexZip"), async (req, res) => {
 // Multer error handling middleware
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).send(`File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)} MB.`);
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res
+        .status(400)
+        .send(
+          `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)} MB.`
+        );
     }
   }
   next(err);
